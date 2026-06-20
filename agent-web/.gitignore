@@ -1,0 +1,18 @@
+node_modules
+dist
+dist-ssr
+
+# env
+.env
+.env.local
+.env.*.local
+.livekit-cloud.api.key.md
+*.api.key.md
+.livekit.env
+
+# logs
+*.log
+npm-debug.log*
+
+# os
+.DS_Store

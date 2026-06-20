@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agent-py"
+version = "0.1.0"
+description = "LiveKit voice agent (Python) on 国内模型生态:STT 火山豆包 / LLM DeepSeek / TTS MiniMax"
+requires-python = ">=3.10, <3.15"
+
+dependencies = [
+    # openai extra → livekit-plugins-openai(提供 openai.LLM.with_deepseek)
+    # minimax extra → livekit-plugins-minimax(提供 minimax.TTS)
+    "livekit-agents[openai,minimax]>=1.6.1",
+    "python-dotenv",
+    # 自定义 STT 的 WebSocket 客户端(aiohttp 通常随 livekit-agents 安装,显式声明以防万一)
+    "aiohttp",
+]
+
+[dependency-groups]
+dev = [
+    "ruff",
+]
+
+[tool.uv]
+# 国内 PyPI 镜像(清华),加速安装。如需官方源删掉此段即可。
+[[tool.uv.index]]
+url = "https://pypi.tuna.tsinghua.edu.cn/simple"
+default = true
+
+# yarl 1.24.1 只发布了 cp310 wheel、无 sdist,Python 3.11+ 装不上。约束一下。
+constraint-dependencies = ["yarl<1.24"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-dir]
+"" = "src"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"

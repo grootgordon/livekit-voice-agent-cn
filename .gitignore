@@ -1,0 +1,47 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# 伞形仓库：仅纳入 agent-py / agent-web 及根级共享配置
+# 同目录下的 agent-node、agents、livekit 等为本地开发依赖，不提交
+# ─────────────────────────────────────────────────────────────────────────────
+/agent-node/
+/agents/
+/livekit/
+
+# ── 密钥与凭据（切勿提交）──
+.livekit.env
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+secrets.json
+*.api.key.md
+.livekit-cloud.api.key.md
+
+# ── Python ──
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+dist/
+build/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# ── Node ──
+node_modules/
+dist/
+dist-ssr/
+*.log
+npm-debug.log*
+
+# ── OS / IDE ──
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo

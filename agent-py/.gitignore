@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+dist/
+build/
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+
+# env(密钥,勿提交)
+.env
+.env.local
+.env.*.local
+.livekit.env
+
+# uv
+# uv.lock  # 如需可复现构建,可取消注释提交 uv.lock
+
+# OS
+.DS_Store
