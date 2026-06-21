@@ -24,7 +24,7 @@
    根目录 .livekit.env（Cloud ⇄ Local 切换）
 ```
 
-> **为何用 Python Agent？** STT/LLM 走国内 API（火山 / DeepSeek），TTS 本地 [`sherpa-voice`](sherpa-voice/) 或云端 MiniMax，**不依赖 LiveKit Cloud Inference**，因此在自托管 LiveKit Server 上也能跑真实语音对话。
+> **为何用 Python Agent？** STT/LLM 走国内 API（火山 / DeepSeek），TTS 本地 [`sherpa-voice`](sherpa-voice/)、云端 MiniMax 或火山豆包 2.0，**不依赖 LiveKit Cloud Inference**，因此在自托管 LiveKit Server 上也能跑真实语音对话。
 
 ---
 
@@ -82,7 +82,7 @@ cd agent-web && npm install && cd ..
 ### 4. 启动（三个终端）
 
 > agent-py 默认 `TTS_PROVIDER=sherpa`，**必须先启动 sherpa-voice，否则 TTS 报 502**。
-> 若改用云端 MiniMax：在 `agent-py/.env.local` 设 `TTS_PROVIDER=minimax`（需有效 key），可跳过终端 1。
+> 三选一：本地 **sherpa**（默认）/ 云端 **MiniMax**（`TTS_PROVIDER=minimax`，需 key）/ **火山豆包 2.0**（`TTS_PROVIDER=volc`，`VOLC_ASR_API_KEY` 与 STT 共用 + 必填 `VOLC_TTS_VOICE`，音质/中英混合最优）。用 MiniMax 或火山可跳过终端 1。
 
 ```bash
 # 终端 1 — 本地 TTS（sherpa-voice @ :8001；用 MiniMax 可跳过）

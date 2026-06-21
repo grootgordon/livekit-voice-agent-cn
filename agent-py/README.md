@@ -7,14 +7,15 @@ Python 语音 agent,用**国内模型**做大脑,**不依赖 LiveKit Cloud Infer
 | --- | --- | --- |
 | STT | **火山豆包大模型流式 ASR** | 自定义 STT(`src/stt_volcengine.py`,封装双向 WebSocket) |
 | LLM | **DeepSeek** | `openai.LLM.with_deepseek`(官方插件) |
-| TTS | **sherpa-voice**(本地,默认)/ **MiniMax**(云端) | `openai.TTS` 指向本地服务;`minimax.TTS` 切云端 |
+| TTS | **sherpa-voice**(本地,默认)/ **MiniMax**(云端)/ **火山 2.0**(双向流式) | `openai.TTS`→本地服务;`minimax.TTS`;`VolcengineTTS` 自定义 |
 | Turn detector | **火山 STT 端点**（`definite` → `END_OF_SPEECH`） | 不用 v1-mini 本地原生库，避免 macOS SIGSEGV |
 | 传输层 | LiveKit Cloud ⇄ 本地 Server | 复用仓库根 `.livekit.env` 的 `LIVEKIT_PROFILE` |
 
 > STT 默认 **language 留空 → 中英文 + 方言自动识别(中英混合)**。
 >
 > TTS 默认走本地 **sherpa-voice**(零成本、纯中文;`TTS_PROVIDER=sherpa`,需先启动 [`../sherpa-voice`](../sherpa-voice) 服务,否则 502)。
-> 设 `TTS_PROVIDER=minimax` 切回云端 MiniMax(需有效 `MINIMAX_API_KEY`)。
+> 设 `TTS_PROVIDER=minimax` 切云端 MiniMax(需有效 `MINIMAX_API_KEY`);
+> 或 `TTS_PROVIDER=volc` 切火山豆包语音合成 2.0(双向流式,`VOLC_ASR_API_KEY` 与 STT 共用 + 必填 `VOLC_TTS_VOICE`,音质/中英混合最优;实现见 [`src/tts_volcengine.py`](src/tts_volcengine.py),先用 `uv run python test_volc_tts.py` 验证)。
 
 ## 前置
 
@@ -78,10 +79,12 @@ agent-py/
 ├── pyproject.toml
 ├── .env.local            # 模型密钥(gitignored)
 ├── test_volc_asr.py      # standalone STT 验证脚本
+├── test_volc_tts.py      # standalone 火山 TTS 验证脚本(TTS_PROVIDER=volc)
 └── src/
     ├── agent.py            # AgentSession 主程序
     ├── livekit_profile.py  # 传输层 profile 解析(读根 .livekit.env)
-    └── stt_volcengine.py   # 火山豆包大模型流式 ASR 自定义 STT
+    ├── stt_volcengine.py   # 火山豆包大模型流式 ASR 自定义 STT
+    └── tts_volcengine.py   # 火山豆包语音合成 2.0 双向流式 自定义 TTS
 ```
 
 ## 已验证
@@ -91,6 +94,7 @@ agent-py/
 - ✅ **LLM 单点**:DeepSeek(`openai.LLM.with_deepseek`)正常应答
 - ✅ **TTS 单点(云端)**:MiniMax 国内站 `api.minimaxi.com` 正常合成音频
 - ✅ **TTS 单点(本地)**:sherpa-voice(theresa)`/health` 返回 ok,合成 24kHz PCM 正常(默认 provider)
+- 🚧 **TTS 单点(火山)**:已实现(双向流式 V3 + X-Api-Key,无 APP ID),待用 `VOLC_ASR_API_KEY`(与 STT 共用)+ `VOLC_TTS_VOICE` 跑 `uv run python test_volc_tts.py` 验证
 - ✅ **端到端(本地 server)**:本地 LiveKit Server + 本 agent + agent-web 浏览器;
   agent 入房后用 **DeepSeek 生成问候、MiniMax 国内站合成发声**(日志见 `wss://api.minimaxi.com/ws/v1/t2a_v2`),
   浏览器聊天面板显示 agent 消息——**全程不碰 LiveKit Cloud Inference**。

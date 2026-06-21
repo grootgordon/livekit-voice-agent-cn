@@ -1,6 +1,6 @@
 """LiveKit 语音 agent(国内模型生态)。
 
-STT=火山豆包大模型流式 ASR(自定义)、LLM=DeepSeek、TTS=MiniMax、
+STT=火山豆包大模型流式 ASR(自定义)、LLM=DeepSeek、TTS=sherpa-voice(本地)/MiniMax/火山、
 话轮检测=STT 端点(火山 definite utterance)。全程不依赖 LiveKit Inference,
 故在本地 LiveKit Server 上也能真实对话(中英混合)。
 
@@ -22,6 +22,7 @@ from livekit.plugins import minimax, openai
 
 from livekit_profile import resolve_livekit_profile
 from stt_volcengine import VolcengineSTT
+from tts_volcengine import VolcengineTTS
 
 load_dotenv(".env.local")
 resolve_livekit_profile()  # transport: cloud | local(根 .livekit.env)
@@ -43,14 +44,24 @@ server = AgentServer()
 
 @server.rtc_session(agent_name="my-agent")  # 需与前端 VITE_AGENT_NAME 一致
 async def entry(ctx: agents.JobContext) -> None:
-    # TTS provider 切换:默认本地 sherpa-voice(MiniMax 欠费时的零成本替代);
-    # 充值后设 TTS_PROVIDER=minimax 可切回云端。详见 ../sherpa-voice。
+    # TTS provider 切换:sherpa(本地,默认)/ minimax(云端)/ volc(火山大模型 2.0,需 X-Api-Key)。
+    # 详见 ../sherpa-voice 与 tts_volcengine.py。
     provider = os.environ.get("TTS_PROVIDER", "sherpa")
     if provider == "minimax":
         _voice = os.environ.get("MINIMAX_VOICE")  # 可选:覆盖默认音色
         tts = minimax.TTS(
             audio_format="pcm", sample_rate=24000,
             **({"voice": _voice} if _voice else {}),
+        )
+    elif provider == "volc":
+        # 火山豆包语音合成大模型 2.0(双向流式);新版控制台仅需 X-Api-Key。
+        # 与 STT 共用同一个 VOLC_ASR_API_KEY(新版控制台 key 需同时开通语音识别 + 语音合成大模型)。
+        # VOLC_TTS_VOICE 必填:控制台>音色库的 seed-tts-2.0 音色 ID。
+        tts = VolcengineTTS(
+            api_key=os.environ["VOLC_ASR_API_KEY"],
+            speaker=os.environ["VOLC_TTS_VOICE"],
+            resource_id=os.environ.get("VOLC_TTS_RESOURCE_ID", "seed-tts-2.0"),
+            model=os.environ.get("VOLC_TTS_MODEL", "seed-tts-2.0-standard"),
         )
     else:
         # openai.TTS 指向本地 OpenAI 兼容服务;openai 插件固定 sample_rate=24000,
