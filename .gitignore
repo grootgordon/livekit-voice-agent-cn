@@ -1,10 +1,17 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# 伞形仓库：仅纳入 agent-py / agent-web 及根级共享配置
-# 同目录下的 agent-node、agents、livekit 等为本地开发依赖，不提交
+# 伞形仓库：纳入 agent-py / agent-web / sherpa-voice / agent-android 及根级共享配置
+# 同目录下的 agent-node、agents、livekit、kokoro 等为本地开发依赖，不提交
 # ─────────────────────────────────────────────────────────────────────────────
 /agent-node/
 /agents/
 /livekit/
+# sherpa-voice/models 下是指向 kokoro/ 的本地符号链接，不入库（避免泄露绝对路径、他人 clone 失效）
+/sherpa-voice/models/
+/kokoro/models/
+/kokoro/outputs/
+/kokoro/.venv/
+/kokoro/kokoro-fastapi/.venv/
+/kokoro/kokoro-fastapi/api/src/models/
 
 # ── 密钥与凭据（切勿提交）──
 .livekit.env
