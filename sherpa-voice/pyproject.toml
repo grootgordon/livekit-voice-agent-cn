@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sherpa-voice"
+version = "0.1.0"
+description = "本地 OpenAI 兼容 TTS 服务, 封装 sherpa-onnx, 供 LiveKit agent-py 调用"
+requires-python = ">=3.10,<3.15"
+dependencies = [
+    # 锁定 1.9.30: 自带 onnxruntime 1.17, 绕过 macOS 12 Intel 上新版 ORT 的 CoreML
+    # _OBJC_CLASS_$_MLComputePlan 符号缺失导致的 dlopen 崩溃。新版 sherpa-onnx 捆绑
+    # ORT 1.24+, 在本机无法运行。详见 ../kokoro/README.md 与 bench_sherpa.py。
+    "sherpa-onnx==1.9.30",
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.27",
+    "numpy>=1.24,<2",
+    "pydantic>=2",
+    "python-dotenv>=1.0",
+]
+
+[tool.uv]
+# 清华 PyPI 镜像(与 kokoro / agent-py 一致)
+[[tool.uv.index]]
+url = "https://pypi.tuna.tsinghua.edu.cn/simple"
+default = true
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]

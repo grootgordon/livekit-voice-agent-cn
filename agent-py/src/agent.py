@@ -43,9 +43,25 @@ server = AgentServer()
 
 @server.rtc_session(agent_name="my-agent")  # 需与前端 VITE_AGENT_NAME 一致
 async def entry(ctx: agents.JobContext) -> None:
-    tts_kwargs: dict = {}
-    if os.environ.get("MINIMAX_VOICE"):  # 可选:覆盖默认音色
-        tts_kwargs["voice"] = os.environ["MINIMAX_VOICE"]
+    # TTS provider 切换:默认本地 sherpa-voice(MiniMax 欠费时的零成本替代);
+    # 充值后设 TTS_PROVIDER=minimax 可切回云端。详见 ../sherpa-voice。
+    provider = os.environ.get("TTS_PROVIDER", "sherpa")
+    if provider == "minimax":
+        _voice = os.environ.get("MINIMAX_VOICE")  # 可选:覆盖默认音色
+        tts = minimax.TTS(
+            audio_format="pcm", sample_rate=24000,
+            **({"voice": _voice} if _voice else {}),
+        )
+    else:
+        # openai.TTS 指向本地 OpenAI 兼容服务;openai 插件固定 sample_rate=24000,
+        # 故 sherpa-voice 必须输出 24kHz PCM(已在其 engine 里源采样率→24kHz 重采样)。
+        tts = openai.TTS(
+            base_url=os.environ.get("SHERPA_VOICE_URL", "http://localhost:8001/v1"),
+            model="tts-1",  # 让 openai 插件走 AudioChunkedStream(iter_bytes 读 raw PCM);服务端忽略 model
+            voice=os.environ.get("SHERPA_VOICE", "0"),  # theresa 单说话人留 0;换 aishell3 则 sid 0-173
+            response_format="pcm",  # 避免 mp3 在 PyAV 解码偶发 SIGSEGV
+            api_key="not-needed",
+        )
 
     session = AgentSession(
         stt=VolcengineSTT(
@@ -56,9 +72,7 @@ async def entry(ctx: agents.JobContext) -> None:
             language="",  # 留空 → 中英文+方言自动识别(中英混合)
         ),
         llm=openai.LLM.with_deepseek(model="deepseek-chat"),
-        # 自动读 MINIMAX_API_KEY 与 MINIMAX_BASE_URL(国内 https://api.minimaxi.com)
-        # 用 pcm 直传:避免 mp3 流式分帧在 PyAV 解码时偶发 InvalidDataError→SIGSEGV
-        tts=minimax.TTS(audio_format="pcm", sample_rate=24000, **tts_kwargs),
+        tts=tts,
         # 用火山 STT 的 definite utterance → END_OF_SPEECH,不用 v1-mini 本地 EOT。
         # v1-mini(livekit.local_inference 原生库)在部分 macOS 上与 TTS 并发时会 SIGSEGV,
         # 前端表现为 "Agent left the room unexpectedly"。

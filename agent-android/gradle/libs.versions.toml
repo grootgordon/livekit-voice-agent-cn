@@ -1,0 +1,33 @@
+[versions]
+agp = "8.7.3"
+kotlin = "2.0.21"
+coreKtx = "1.13.1"
+activityCompose = "1.9.3"
+composeBom = "2024.12.01"
+datastore = "1.1.1"
+livekit = "2.26.0"
+livekitCompose = "2.4.0"
+jwt = "4.5.1"
+
+[libraries]
+androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
+androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
+androidx-ui = { group = "androidx.compose.ui", name = "ui" }
+androidx-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
+androidx-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
+androidx-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
+androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
+androidx-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" }
+androidx-datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }
+
+# LiveKit
+livekit-android = { group = "io.livekit", name = "livekit-android", version.ref = "livekit" }
+livekit-compose-components = { group = "io.livekit", name = "livekit-android-compose-components", version.ref = "livekitCompose" }
+# 端内签 token（纯本地 JWT 构造）。不引入 server-sdk-kotlin，避免其 protobuf-java 与客户端的 protobuf-javalite 冲突。
+java-jwt = { group = "com.auth0", name = "java-jwt", version.ref = "jwt" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
