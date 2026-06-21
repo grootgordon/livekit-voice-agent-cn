@@ -6,8 +6,10 @@
 
 | 子项目 | 说明 |
 | --- | --- |
-| [`agent-py/`](agent-py/) | Python 语音 Agent：STT 火山豆包 / LLM DeepSeek / TTS MiniMax |
+| [`agent-py/`](agent-py/) | Python 语音 Agent：STT 火山豆包 / LLM DeepSeek / TTS sherpa-voice 或 MiniMax |
+| [`sherpa-voice/`](sherpa-voice/) | 本地 OpenAI 兼容 TTS 服务（sherpa-onnx，零成本，默认 TTS provider） |
 | [`agent-web/`](agent-web/) | React 前端 + Express Token 服务（Session API + agent dispatch） |
+| [`agent-android/`](agent-android/) | Android 原生入口（Kotlin + Compose，端内签 token + 音频可视化） |
 
 ## 架构
 
@@ -22,7 +24,7 @@
    根目录 .livekit.env（Cloud ⇄ Local 切换）
 ```
 
-> **为何用 Python Agent？** 模型走国内 API（DeepSeek / MiniMax / 火山），**不依赖 LiveKit Cloud Inference**，因此在自托管 LiveKit Server 上也能跑真实语音对话。
+> **为何用 Python Agent？** STT/LLM 走国内 API（火山 / DeepSeek），TTS 本地 [`sherpa-voice`](sherpa-voice/) 或云端 MiniMax，**不依赖 LiveKit Cloud Inference**，因此在自托管 LiveKit Server 上也能跑真实语音对话。
 
 ---
 
@@ -72,17 +74,24 @@ cp agent-web/.env.example agent-web/.env
 ### 3. 安装依赖
 
 ```bash
+cd sherpa-voice && uv sync && cd ..   # 本地 TTS（默认 provider；仅用云端 MiniMax 可跳过）
 cd agent-py && uv sync && cd ..
 cd agent-web && npm install && cd ..
 ```
 
-### 4. 启动（两个终端）
+### 4. 启动（三个终端）
+
+> agent-py 默认 `TTS_PROVIDER=sherpa`，**必须先启动 sherpa-voice，否则 TTS 报 502**。
+> 若改用云端 MiniMax：在 `agent-py/.env.local` 设 `TTS_PROVIDER=minimax`（需有效 key），可跳过终端 1。
 
 ```bash
-# 终端 1 — Python Agent
+# 终端 1 — 本地 TTS（sherpa-voice @ :8001；用 MiniMax 可跳过）
+cd sherpa-voice && ./start.sh
+
+# 终端 2 — Python Agent
 cd agent-py && uv run python src/agent.py dev
 
-# 终端 2 — Web（Token 服务 :8787 + Vite :5173）
+# 终端 3 — Web（Token 服务 :8787 + Vite :5173）
 cd agent-web && npm run dev
 ```
 
@@ -93,44 +102,65 @@ cd agent-web && npm run dev
 3. Agent 名称填 **`my-agent`**（与 agent-py 中 `agent_name` 一致）
 4. 点击「开始通话」，说中英混合句子
 
-启动成功时，两个终端应分别打印 `🛰  LiveKit transport = CLOUD (...)` 和 `🟢 Token server: http://localhost:8787`。
+启动成功时，各终端分别打印：sherpa-voice `就绪 @ :8001`、agent-py `🛰  LiveKit transport = CLOUD (...)`、Web `🟢 Token server: http://localhost:8787`。
 
 ---
 
 ## 本地 LiveKit Server（可选）
 
-本仓库**不包含** LiveKit Server 源码。若要在本地跑（`LIVEKIT_PROFILE=local`），任选一种方式启动 SFU：
+`livekit/` 是 LiveKit Server 的**本地克隆**（已 gitignore，不入版本库），内含预编译二进制 `livekit/bin/livekit-server`（v1.13.1），以及本地启动用的 `Makefile` 和 `config-lan.yaml`。本地跑（`LIVEKIT_PROFILE=local`）用 Makefile 两种模式：
 
-### 方式 A：`livekit-server --dev`（最简单）
+| 模式 | 命令 | 监听 | 适用 |
+| --- | --- | --- | --- |
+| **dev** | `make -C livekit dev` | `127.0.0.1:7880` | 本机浏览器测试（最快） |
+| **lan** | `make -C livekit lan` | `0.0.0.0:7880` | 手机 / APK 局域网访问 |
+
+两者均用 `--dev`，内置 `key=devkey` / `secret=secret`（与 `.livekit.env` 的 LOCAL 预设一致），单节点免 Redis。端口：信号 7880 / RTC-TCP 7881 / RTC-UDP 50000–60000。
+
+> `make lan` 通过 `livekit/config-lan.yaml` 覆盖 dev 默认的 `127.0.0.1` 绑定（改为监听所有网卡），并跳过 NAT 自 ping 验证以加速启动；key 不变。
+
+### 方式 A：仓库内 Makefile（推荐）
+
+```bash
+# 终端 0 — 选一种模式
+make -C livekit dev      # 仅本机浏览器
+make -C livekit lan      # 局域网（手机 / APK 可连）
+
+# 其他目标
+make -C livekit stop     # 停掉本地 server
+make -C livekit ip       # 打印本机局域网 IP
+make -C livekit help     # 全部命令
+```
+
+> `Makefile` 与 `config-lan.yaml` 在 gitignore 的 `livekit/` 内，**不随仓库分发**。新环境克隆后若没有这两个文件，退回方式 B。
+
+### 方式 B：直接跑二进制
+
+```bash
+cd livekit
+./bin/livekit-server --dev                            # 等同 make dev
+./bin/livekit-server --dev --config config-lan.yaml   # 等同 make lan
+```
+
+### 方式 C：brew / Docker（不依赖本仓库二进制）
 
 ```bash
 # macOS
-brew install livekit
+brew install livekit && livekit-server --dev
 
-# 或从 GitHub Releases 下载二进制
-# https://github.com/livekit/livekit/releases
-
-livekit-server --dev
-# 默认：ws://localhost:7880  key=devkey  secret=secret
-```
-
-### 方式 B：Docker
-
-```bash
-docker run --rm \
-  -p 7880:7880 -p 7881:7881 -p 7882:7882/udp \
+# Docker
+docker run --rm -p 7880:7880 -p 7881:7881 -p 7882:7882/udp \
   livekit/livekit-server --dev
 ```
 
 ### 切换 profile 并启动应用
 
 ```bash
-# .livekit.env 中设置：
-#   LIVEKIT_PROFILE=local
-# （LOCAL 预设已在 .livekit.env.example 中填好 devkey/secret）
+# .livekit.env 中设置：LIVEKIT_PROFILE=local
+# （LOCAL 预设的 devkey/secret 已对齐 dev 模式）
 
 # 终端 0 — LiveKit Server
-livekit-server --dev
+make -C livekit dev     # 或 lan
 
 # 终端 1 — Agent
 cd agent-py && uv run python src/agent.py dev
@@ -138,6 +168,17 @@ cd agent-py && uv run python src/agent.py dev
 # 终端 2 — Web
 cd agent-web && npm run dev
 ```
+
+### 手机 APK 访问本地 Server
+
+`make dev` 只监听 `127.0.0.1`，手机连不上。要让 APK 走本地 server：
+
+1. `make -C livekit lan` —— 启动局域网模式（bind `0.0.0.0`）
+2. `make -C livekit ip` —— 取本机局域网 IP（如 `192.168.1.30`）
+3. `.livekit.env` 的 `LIVEKIT_URL_LOCAL` 设为 `ws://<该IP>:7880`
+4. 手机与电脑连**同一 Wi-Fi**，APK 里 Agent 名填 `my-agent`
+
+> 局域网 IP 可能随网络变化，换网后用 `make -C livekit ip` 重新获取并更新 `.livekit.env`。
 
 更多自托管说明见 [LiveKit 官方文档](https://docs.livekit.io/home/self-hosting/local/)。
 
@@ -155,13 +196,29 @@ LIVEKIT_PROFILE=cloud   # 或 local
 
 ---
 
+## Android 真机入口（[`agent-android/`](agent-android/)）
+
+`agent-android/` 是与 Web 端平级的安卓入口，安装到手机即可验证语音 Agent。与 Web 端不同，它在**手机本地签 token**（不依赖 token 服务），UI 上可一键切换 Cloud / 本地 Server。
+
+- 构建出 APK：`cd agent-android && ./gradlew assembleDebug`，产物在 `app/build/outputs/apk/debug/app-debug.apk`
+- 需 Android Studio（含 Android SDK + JDK 17）；打开 `agent-android/` 即可构建运行
+- Agent 名填 `my-agent`，与 agent-py 的 `agent_name` 一致
+
+详见 [agent-android/README.md](agent-android/README.md)。
+
+> ⚠️ 密钥随 APK 打包——**仅供自用，切勿公开发布 APK**。
+
+---
+
 ## 目录结构
 
 ```
 livekit-voice-agent-cn/
 ├── .livekit.env.example    # 传输层配置模板（Cloud + Local 双预设）
-├── agent-py/               # Python 语音 Agent
+├── agent-py/               # Python 语音 Agent（STT 火山 / LLM DeepSeek / TTS）
+├── sherpa-voice/           # 本地 TTS 服务（sherpa-onnx，默认 TTS provider）
 ├── agent-web/              # React 前端 + Token 服务
+├── agent-android/          # Android 原生入口（Kotlin + Compose）
 └── scripts/
     └── check-secrets.sh    # 提交前密钥扫描
 ```
@@ -171,7 +228,9 @@ livekit-voice-agent-cn/
 ## 子项目文档
 
 - [agent-py/README.md](agent-py/README.md) — 模型配置、STT 单点验证
+- [sherpa-voice/README.md](sherpa-voice/README.md) — 本地 TTS 服务、音色模型、性能
 - [agent-web/README.md](agent-web/README.md) — 前端架构、Token 服务、生产构建
+- [agent-android/README.md](agent-android/README.md) — Android 构建、APK 产出、真机验证
 
 ---
 

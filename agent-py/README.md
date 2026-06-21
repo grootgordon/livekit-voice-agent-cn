@@ -7,11 +7,14 @@ Python 语音 agent,用**国内模型**做大脑,**不依赖 LiveKit Cloud Infer
 | --- | --- | --- |
 | STT | **火山豆包大模型流式 ASR** | 自定义 STT(`src/stt_volcengine.py`,封装双向 WebSocket) |
 | LLM | **DeepSeek** | `openai.LLM.with_deepseek`(官方插件) |
-| TTS | **MiniMax** | `minimax.TTS`(官方插件) |
+| TTS | **sherpa-voice**(本地,默认)/ **MiniMax**(云端) | `openai.TTS` 指向本地服务;`minimax.TTS` 切云端 |
 | Turn detector | **火山 STT 端点**（`definite` → `END_OF_SPEECH`） | 不用 v1-mini 本地原生库，避免 macOS SIGSEGV |
 | 传输层 | LiveKit Cloud ⇄ 本地 Server | 复用仓库根 `.livekit.env` 的 `LIVEKIT_PROFILE` |
 
 > STT 默认 **language 留空 → 中英文 + 方言自动识别(中英混合)**。
+>
+> TTS 默认走本地 **sherpa-voice**(零成本、纯中文;`TTS_PROVIDER=sherpa`,需先启动 [`../sherpa-voice`](../sherpa-voice) 服务,否则 502)。
+> 设 `TTS_PROVIDER=minimax` 切回云端 MiniMax(需有效 `MINIMAX_API_KEY`)。
 
 ## 前置
 
@@ -86,7 +89,8 @@ agent-py/
 - ✅ `uv sync` + `download-files` + 导入检查通过
 - ✅ **STT 单点**:喂 16k 中文 wav,火山豆包大模型流式 ASR 正确转写(interim + FINAL)
 - ✅ **LLM 单点**:DeepSeek(`openai.LLM.with_deepseek`)正常应答
-- ✅ **TTS 单点**:MiniMax 国内站 `api.minimaxi.com` 正常合成音频
+- ✅ **TTS 单点(云端)**:MiniMax 国内站 `api.minimaxi.com` 正常合成音频
+- ✅ **TTS 单点(本地)**:sherpa-voice(theresa)`/health` 返回 ok,合成 24kHz PCM 正常(默认 provider)
 - ✅ **端到端(本地 server)**:本地 LiveKit Server + 本 agent + agent-web 浏览器;
   agent 入房后用 **DeepSeek 生成问候、MiniMax 国内站合成发声**(日志见 `wss://api.minimaxi.com/ws/v1/t2a_v2`),
   浏览器聊天面板显示 agent 消息——**全程不碰 LiveKit Cloud Inference**。
